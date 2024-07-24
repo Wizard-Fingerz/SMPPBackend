@@ -1,4 +1,3 @@
-# utils.py
 import logging
 from azure.cognitiveservices.vision.computervision import ComputerVisionClient
 from azure.cognitiveservices.vision.computervision.models import VisualFeatureTypes
@@ -11,6 +10,7 @@ import os
 # Set up logging
 logger = logging.getLogger(__name__)
 
+# Print out the settings for debugging purposes
 print(f'{settings.AZURE_CV_ENDPOINT}')
 print(f'{settings.AZURE_CV_SUBSCRIPTION_KEY}')
 print(f'{settings.AZURE_CM_ENDPOINT}')
@@ -19,7 +19,6 @@ print(f'{settings.AZURE_CM_SUBSCRIPTION_KEY}')
 print(f"Computer Vision subscription key: {settings.AZURE_CV_SUBSCRIPTION_KEY}")
 print(f"Computer Vision endpoint: {settings.AZURE_CV_ENDPOINT}")
 
-
 def analyze_image(image_path):
     if not os.path.exists(image_path):
         logger.error(f"Image path does not exist: {image_path}")
@@ -27,7 +26,7 @@ def analyze_image(image_path):
 
     try:
         # Fetching subscription keys and endpoints from settings
-        cv_subscription_key = settings.AZURE_CV_ENDPOINT
+        cv_subscription_key = settings.AZURE_CV_SUBSCRIPTION_KEY
         cv_endpoint = settings.AZURE_CV_ENDPOINT
         cm_subscription_key = settings.AZURE_CM_SUBSCRIPTION_KEY
         cm_endpoint = settings.AZURE_CM_ENDPOINT
@@ -42,12 +41,10 @@ def analyze_image(image_path):
             raise ValueError("Subscription key cannot be None")
 
         # Azure Computer Vision Client
-        # Computer Vision Client
         cv_client = ComputerVisionClient(
-            settings.AZURE_CV_ENDPOINT, 
-            CognitiveServicesCredentials(settings.AZURE_CV_SUBSCRIPTION_KEY)
+            cv_endpoint,
+            CognitiveServicesCredentials(cv_subscription_key)
         )
-
 
         with open(image_path, 'rb') as image_file:
             cv_analysis = cv_client.analyze_image_in_stream(
@@ -57,19 +54,23 @@ def analyze_image(image_path):
         is_sensitive = cv_analysis.adult.is_adult_content or cv_analysis.adult.is_racy_content
 
         logger.info(f"Azure CV analysis for {image_path}: Adult content: {cv_analysis.adult.is_adult_content}, Racy content: {cv_analysis.adult.is_racy_content}")
+        print(f"Azure CV analysis for {image_path}: Adult content: {cv_analysis.adult.is_adult_content}, Racy content: {cv_analysis.adult.is_racy_content}")
 
         # Azure Content Moderator Client
         cm_client = ContentModeratorClient(
-            settings.AZURE_CM_ENDPOINT, 
-            CognitiveServicesCredentials(settings.AZURE_CM_SUBSCRIPTION_KEY)
+            cm_endpoint,
+            CognitiveServicesCredentials(cm_subscription_key)
         )
 
         with open(image_path, 'rb') as image_file:
-            cm_analysis = cm_client.image_moderation.evaluate_image_in_stream(image_file)
+            cm_analysis = cm_client.image_moderation.evaluate_file_input(
+                image_file, data_representation="URL", cache_content=False
+            )
 
         is_sensitive = is_sensitive or cm_analysis.is_image_adult_classified or cm_analysis.is_image_racy_classified
 
         logger.info(f"Azure Content Moderator analysis for {image_path}: Adult classified: {cm_analysis.is_image_adult_classified}, Racy classified: {cm_analysis.is_image_racy_classified}")
+        print(f"Azure Content Moderator analysis for {image_path}: Adult classified: {cm_analysis.is_image_adult_classified}, Racy classified: {cm_analysis.is_image_racy_classified}")
 
         return is_sensitive
     except Exception as e:
