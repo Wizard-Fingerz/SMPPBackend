@@ -6,6 +6,9 @@ from .utils import analyze_image, blur_image
 from PIL import Image as PilImage, ImageFilter
 import os
 from django.conf import settings
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+
 # Create your models here.
 
 
@@ -18,20 +21,26 @@ class PostMedia(models.Model):
     is_sensitive = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
-        if self.file and self.file.name.lower().endswith(('jpg', 'jpeg', 'png', 'gif')):
-            is_sensitive = analyze_image(self.file.path)
+        if self.file and self.file.name.lower().endswith(('jpg', 'jpeg', 'png', 'gif', 'png')):
+            # Save the in-memory file to disk
+            file_name = self.file.name
+            file_path = os.path.join(settings.MEDIA_ROOT, 'post_files', file_name)
+            path = default_storage.save(file_path, ContentFile(self.file.read()))
+
+            # Analyze the image
+            is_sensitive = analyze_image(file_path)
             self.is_sensitive = is_sensitive
 
             if is_sensitive:
                 blurred_path = os.path.join(
-                    settings.MEDIA_ROOT, 'blurred_images', os.path.basename(self.file.path)
+                    settings.MEDIA_ROOT, 'blurred_images', os.path.basename(file_path)
                 )
-                blur_image(self.file.path, blurred_path)
+                blur_image(file_path, blurred_path)
                 self.blurred_image = os.path.join('blurred_images', os.path.basename(blurred_path))
 
         super().save(*args, **kwargs)
         
-        
+                
 class CommentMedia(models.Model):
     media = models.FileField(upload_to='comment_files/', blank=True, null=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

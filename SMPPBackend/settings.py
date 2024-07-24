@@ -139,5 +139,35 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-AZURE_ENDPOINT = os.getenv('AZURE_ENDPOINT')
-AZURE_SUBSCRIPTION_KEY = os.getenv('AZURE_SUBSCRIPTION_KEY')
+# AZURE_ENDPOINT = os.getenv('AZURE_ENDPOINT')
+# AZURE_SUBSCRIPTION_KEY = os.getenv('AZURE_SUBSCRIPTION_KEY')
+
+# AZURE_SERVICES = {
+#     'computer_vision': {
+#         'subscription_key': os.getenv('AZURE_COMPUTER_VISION_SUBSCRIPTION_KEY'),
+#         'endpoint': os.getenv('AZURE_ENDPOINT')
+#     },
+#     'content_moderator': {
+#         'subscription_key': os.getenv('AZURE_SUBSCRIPTION_KEY_CONTENT_MODERATOR_KEY'),
+#         'endpoint': os.getenv('AZURE_SUBSCRIPTION_KEY_CONTENT_MODERATOR_DOMAIN')
+#     }
+# }
+
+import os
+
+AZURE_CV_SUBSCRIPTION_KEY = os.getenv('AZURE_SUBSCRIPTION_KEY')
+AZURE_CV_ENDPOINT = os.getenv('AZURE_ENDPOINT')
+
+AZURE_CM_SUBSCRIPTION_KEY = os.getenv('AZURE_SUBSCRIPTION_KEY_CONTENT_MODERATOR_KEY')
+AZURE_CM_ENDPOINT = os.getenv('AZURE_SUBSCRIPTION_KEY_CONTENT_MODERATOR_DOMAIN')
+
+# AZURE_SERVICES = {
+#     'computer_vision': {
+#         'subscription_key': AZURE_CV_SUBSCRIPTION_KEY,
+#         'endpoint': AZURE_CV_ENDPOINT
+#     },
+#     'content_moderator': {
+#         'subscription_key': AZURE_CM_SUBSCRIPTION_KEY,
+#         'endpoint': AZURE_CM_ENDPOINT
+#     }
+# }

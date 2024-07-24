@@ -1,33 +1,86 @@
-
-
 # utils.py
+import logging
 from azure.cognitiveservices.vision.computervision import ComputerVisionClient
 from azure.cognitiveservices.vision.computervision.models import VisualFeatureTypes
+from azure.cognitiveservices.vision.contentmoderator import ContentModeratorClient
 from msrest.authentication import CognitiveServicesCredentials
 from django.conf import settings
 from PIL import Image as PilImage, ImageFilter
 import os
 
+# Set up logging
+logger = logging.getLogger(__name__)
+
+print(f'{settings.AZURE_CV_ENDPOINT}')
+print(f'{settings.AZURE_CV_SUBSCRIPTION_KEY}')
+print(f'{settings.AZURE_CM_ENDPOINT}')
+print(f'{settings.AZURE_CM_SUBSCRIPTION_KEY}')
+
+print(f"Computer Vision subscription key: {settings.AZURE_CV_SUBSCRIPTION_KEY}")
+print(f"Computer Vision endpoint: {settings.AZURE_CV_ENDPOINT}")
+
 
 def analyze_image(image_path):
     if not os.path.exists(image_path):
+        logger.error(f"Image path does not exist: {image_path}")
         return False  # Or handle accordingly based on your application logic
 
-    client = ComputerVisionClient(
-        settings.AZURE_ENDPOINT, 
-        CognitiveServicesCredentials(settings.AZURE_SUBSCRIPTION_KEY)
-    )
+    try:
+        # Fetching subscription keys and endpoints from settings
+        cv_subscription_key = settings.AZURE_CV_ENDPOINT
+        cv_endpoint = settings.AZURE_CV_ENDPOINT
+        cm_subscription_key = settings.AZURE_CM_SUBSCRIPTION_KEY
+        cm_endpoint = settings.AZURE_CM_ENDPOINT
 
-    with open(image_path, 'rb') as image_file:
-        analysis = client.analyze_image_in_stream(
-            image_file, visual_features=[VisualFeatureTypes.adult]
+        # Logging for debugging purposes
+        logger.info(f"Computer Vision subscription key: {cv_subscription_key}")
+        logger.info(f"Computer Vision endpoint: {cv_endpoint}")
+        logger.info(f"Content Moderator subscription key: {cm_subscription_key}")
+        logger.info(f"Content Moderator endpoint: {cm_endpoint}")
+
+        if not cv_subscription_key or not cm_subscription_key:
+            raise ValueError("Subscription key cannot be None")
+
+        # Azure Computer Vision Client
+        # Computer Vision Client
+        cv_client = ComputerVisionClient(
+            settings.AZURE_CV_ENDPOINT, 
+            CognitiveServicesCredentials(settings.AZURE_CV_SUBSCRIPTION_KEY)
         )
 
-    is_sensitive = analysis.adult.is_adult_content or analysis.adult.is_racy_content
-    return is_sensitive
 
+        with open(image_path, 'rb') as image_file:
+            cv_analysis = cv_client.analyze_image_in_stream(
+                image_file, visual_features=[VisualFeatureTypes.adult]
+            )
+
+        is_sensitive = cv_analysis.adult.is_adult_content or cv_analysis.adult.is_racy_content
+
+        logger.info(f"Azure CV analysis for {image_path}: Adult content: {cv_analysis.adult.is_adult_content}, Racy content: {cv_analysis.adult.is_racy_content}")
+
+        # Azure Content Moderator Client
+        cm_client = ContentModeratorClient(
+            settings.AZURE_CM_ENDPOINT, 
+            CognitiveServicesCredentials(settings.AZURE_CM_SUBSCRIPTION_KEY)
+        )
+
+        with open(image_path, 'rb') as image_file:
+            cm_analysis = cm_client.image_moderation.evaluate_image_in_stream(image_file)
+
+        is_sensitive = is_sensitive or cm_analysis.is_image_adult_classified or cm_analysis.is_image_racy_classified
+
+        logger.info(f"Azure Content Moderator analysis for {image_path}: Adult classified: {cm_analysis.is_image_adult_classified}, Racy classified: {cm_analysis.is_image_racy_classified}")
+
+        return is_sensitive
+    except Exception as e:
+        logger.error(f"Error analyzing image {image_path}: {str(e)}")
+        return False
 
 def blur_image(image_path, output_path):
-    image = PilImage.open(image_path)
-    blurred_image = image.filter(ImageFilter.GaussianBlur(10))  # Adjust the blur radius as needed
-    blurred_image.save(output_path)
+    try:
+        image = PilImage.open(image_path)
+        blurred_image = image.filter(ImageFilter.GaussianBlur(50))  # Increase the blur radius for heavy blurring
+        blurred_image.save(output_path)
+        logger.info(f"Image successfully blurred and saved to {output_path}")
+    except Exception as e:
+        logger.error(f"Error blurring image {image_path}: {str(e)}")
