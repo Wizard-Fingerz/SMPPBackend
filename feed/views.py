@@ -20,6 +20,8 @@ from rest_framework.decorators import *
 # from paystackapi.transaction import Transaction
 from django.conf import settings
 from django.http import QueryDict
+from django.http import FileResponse
+import mimetypes
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -362,7 +364,12 @@ class PostFeedsViewSet(viewsets.ModelViewSet):
 
     # def get_queryset(self):
     #     return Post.objects.all().select_related('user').prefetch_related('media').order_by('-timestamp')
+
 class DownloadMediaView(APIView):
+
+    permission_classes = (IsAuthenticated,)
+    authentication_classes = (TokenAuthentication,)
+
     def get(self, request, media_id):
         try:
             media = PostMedia.objects.get(pk=media_id)
@@ -374,12 +381,15 @@ class DownloadMediaView(APIView):
         if not os.path.exists(file_path):
             return Response({"detail": "File not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        with open(file_path, 'rb') as file:
-            response = HttpResponse(file.read(), content_type='application/octet-stream')
-            response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
-            return response
-        
-        
+        # Guess the MIME type based on the file extension
+        mime_type, _ = mimetypes.guess_type(file_path)
+        mime_type = mime_type or 'application/octet-stream'  # Fallback if mime type can't be determined
+
+        response = FileResponse(open(file_path, 'rb'), content_type=mime_type)
+        response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
+
+        return response
+
 class RepostViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
     authentication_classes = (TokenAuthentication,)

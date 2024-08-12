@@ -11,13 +11,13 @@ import os
 logger = logging.getLogger(__name__)
 
 # Print out the settings for debugging purposes
-print(f'{settings.AZURE_CV_ENDPOINT}')
-print(f'{settings.AZURE_CV_SUBSCRIPTION_KEY}')
-print(f'{settings.AZURE_CM_ENDPOINT}')
-print(f'{settings.AZURE_CM_SUBSCRIPTION_KEY}')
+# print(f'{settings.AZURE_CV_ENDPOINT}')
+# print(f'{settings.AZURE_CV_SUBSCRIPTION_KEY}')
+# print(f'{settings.AZURE_CM_ENDPOINT}')
+# print(f'{settings.AZURE_CM_SUBSCRIPTION_KEY}')
 
-print(f"Computer Vision subscription key: {settings.AZURE_CV_SUBSCRIPTION_KEY}")
-print(f"Computer Vision endpoint: {settings.AZURE_CV_ENDPOINT}")
+# print(f"Computer Vision subscription key: {settings.AZURE_CV_SUBSCRIPTION_KEY}")
+# print(f"Computer Vision endpoint: {settings.AZURE_CV_ENDPOINT}")
 
 def analyze_image(image_path):
     if not os.path.exists(image_path):
