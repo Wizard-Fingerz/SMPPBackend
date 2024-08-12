@@ -10,18 +10,42 @@ class PostMediaSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def create(self, validated_data):
-        image = validated_data['image']
-        is_sensitive = analyze_image(image.path)
-        validated_data['is_sensitive'] = is_sensitive
+        image = validated_data['file']
+        user_sensitivity = validated_data.get('sensitivity', 'low')  # Default to 'low' if not provided
 
+        # Debug output to ensure correct sensitivity handling
+        print(f"User sensitivity setting: {user_sensitivity}")
+
+        # Determine if the image is sensitive based on user-specified sensitivity
+        user_sensitive = user_sensitivity == 'high'
+        print(f"Is user sensitive? {user_sensitive}")
+
+        # If user_sensitive or if the image is analyzed as sensitive
+        is_sensitive = user_sensitive or analyze_image(image.path)
+        print(f"Is the image sensitive? {is_sensitive}")
+        
+        validated_data['is_sensitive'] = is_sensitive
+        validated_data['user_sensitive'] = user_sensitive
+
+        # Handle image blurring if needed
         if is_sensitive:
+            # Ensure the blurred_images directory exists
+            blurred_images_dir = os.path.join(settings.MEDIA_ROOT, 'blurred_images')
+            if not os.path.exists(blurred_images_dir):
+                os.makedirs(blurred_images_dir)
+            
             blurred_path = os.path.join(
-                settings.MEDIA_ROOT, 'images', 'blurred', os.path.basename(image.path)
+                blurred_images_dir, os.path.basename(image.path)
             )
-            blur_image(image.path, blurred_path)
-            validated_data['blurred_image'] = os.path.join('images', 'blurred', os.path.basename(blurred_path))
+            try:
+                blur_image(image.path, blurred_path)
+                validated_data['blurred_image'] = os.path.join('blurred_images', os.path.basename(blurred_path))
+                print(f"Blurred image saved to: {validated_data['blurred_image']}")
+            except Exception as e:
+                print(f"Error blurring image: {e}")
 
         return super().create(validated_data)
+
 
 class CommentMediaSerializer(serializers.ModelSerializer):
     class Meta:

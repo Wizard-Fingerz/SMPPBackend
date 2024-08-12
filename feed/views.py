@@ -25,40 +25,37 @@ from django.http import QueryDict
 @permission_classes([IsAuthenticated])
 def create_post(request):
     if request.method == 'POST':
-        post_data = request.data  # No need to copy the data
+        post_data = request.data
+        print(post_data)
         post_media_data = request.FILES.getlist('media')
-        print("Post Media Data:", post_media_data)
 
-        # Extract the tagged users and remove from post_data
         tagged_users = post_data.get('tagged_users', None)
         if tagged_users:
             try:
-                tagged_users = json.loads(tagged_users)  # Convert the stringified list back to a Python list
-                # Convert QueryDict to a regular dictionary if it's not already a dict
+                tagged_users = json.loads(tagged_users)
                 if isinstance(post_data, QueryDict):
                     post_data = post_data.dict()
-                post_data.pop('tagged_users')  # Remove tagged_users from post_data
+                post_data.pop('tagged_users')
             except json.JSONDecodeError as e:
                 return Response({'tagged_users': [f'Invalid format: {str(e)}']}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Add the user to the post data
-        if isinstance(post_data, QueryDict):
-            post_data = post_data.dict()  # Convert QueryDict to a regular dictionary if it's not already a dict
         post_data['user'] = request.user.id
 
-        # Create a new post
-        print("Post Data:", post_data)
+        # Add sensitivity to the post data
+        sensitivity = post_data.get('sensitivity', 'low')
+        post_data['sensitivity'] = sensitivity
+
         post_serializer = PostSerializer(data=post_data, context={'request': request})
         if post_serializer.is_valid():
             post = post_serializer.save()
 
-            # Attach media if provided
             if post_media_data:
                 for media in post_media_data:
                     media_data = {
                         'post': post.id,
                         'user': request.user.id,
-                        'file': media
+                        'file': media,
+                        'sensitivity': sensitivity  # Pass the sensitivity level
                     }
 
                     media_serializer = PostMediaSerializer(data=media_data)
@@ -67,7 +64,6 @@ def create_post(request):
                     else:
                         print("Media Serializer Errors:", media_serializer.errors)
 
-            # Add tagged users to the post
             if tagged_users:
                 post.tagged_users.set(tagged_users)
 
@@ -75,6 +71,7 @@ def create_post(request):
 
         print("Post Serializer Errors:", post_serializer.errors)
         return Response(post_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

@@ -11,6 +11,10 @@ from django.core.files.base import ContentFile
 
 # Create your models here.
 
+import os
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+from django.conf import settings
 
 class PostMedia(models.Model):
     post = models.ForeignKey('Post', related_name='media', on_delete=models.CASCADE)
@@ -19,27 +23,43 @@ class PostMedia(models.Model):
     blurred_image = models.ImageField(upload_to='blurred_images/', null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     is_sensitive = models.BooleanField(default=False)
+    user_sensitive = models.BooleanField(default=False)
+    sensitivity = models.CharField(max_length=10, default='low')
 
     def save(self, *args, **kwargs):
-        if self.file and self.file.name.lower().endswith(('jpg', 'jpeg', 'png', 'gif', 'png')):
-            # Save the in-memory file to disk
+        if self.file:
             file_name = self.file.name
             file_path = os.path.join(settings.MEDIA_ROOT, 'post_files', file_name)
-            path = default_storage.save(file_path, ContentFile(self.file.read()))
 
-            # Analyze the image
-            is_sensitive = analyze_image(file_path)
-            self.is_sensitive = is_sensitive
+            # Save the in-memory file to disk
+            if not os.path.exists(file_path):
+                path = default_storage.save(file_path, ContentFile(self.file.read()))
 
-            if is_sensitive:
+            # Determine if the image should be blurred based on sensitivity settings
+            self.user_sensitive = self.sensitivity == 'high'
+            if not self.user_sensitive:
+                is_sensitive = analyze_image(file_path)
+                self.is_sensitive = is_sensitive
+            else:
+                self.is_sensitive = True
+
+            # Handle image blurring if needed
+            if self.is_sensitive:
+                blurred_images_dir = os.path.join(settings.MEDIA_ROOT, 'blurred_images')
+                if not os.path.exists(blurred_images_dir):
+                    os.makedirs(blurred_images_dir)
+
                 blurred_path = os.path.join(
-                    settings.MEDIA_ROOT, 'blurred_images', os.path.basename(file_path)
+                    blurred_images_dir, os.path.basename(file_path)
                 )
-                blur_image(file_path, blurred_path)
-                self.blurred_image = os.path.join('blurred_images', os.path.basename(blurred_path))
+                try:
+                    blur_image(file_path, blurred_path)
+                    self.blurred_image = os.path.join('blurred_images', os.path.basename(blurred_path))
+                except Exception as e:
+                    print(f"Error blurring image: {e}")
 
         super().save(*args, **kwargs)
-        
+
                 
 class CommentMedia(models.Model):
     media = models.FileField(upload_to='comment_files/', blank=True, null=True)

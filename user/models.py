@@ -107,7 +107,7 @@ class BusinessCategory(models.Model):
 
 RELIGION_CHOICES = [
     ('Christianity', 'Christianity'),
-    ('Muslim', 'Muslim'),
+    ('Islam', 'Islam'),
     ('Indigenous', 'Indigenous'),
     ('Others', 'Others'),
 ]

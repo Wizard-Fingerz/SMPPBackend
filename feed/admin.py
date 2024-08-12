@@ -6,7 +6,7 @@ from .models import *
 
 @admin.register(PostMedia)
 class PostMedia(ImportExportModelAdmin):
-    list_display = ('post','user', 'file', 'blurred_image', 'uploaded_at', 'is_sensitive')
+    list_display = ('post','user', 'file', 'blurred_image', 'uploaded_at', 'is_sensitive', 'user_sensitive', 'sensitivity')
 
 @admin.register(CommentMedia)
 class CommentMediaAdmin(ImportExportModelAdmin):
